@@ -1,0 +1,66 @@
+# loadup interim steps
+
+tmp/*
+
+# releases directory
+releases/*
+
+# maiko directory
+maiko/
+
+
+# all PDFs (those explicitly checked in aren't ignored
+# normally when you have derived files, you ignore them from git
+# because they will get regenerated when you rebuild.
+# MEDLEY-UTILS HCFILES regenerates
+
+# do not ignore .pdf files after all... rather, [new workflow](scripts/make-gh-pages.md) stores it in the src repository gh-pages branch.
+
+# *.pdf
+# index.html
+
+
+# all loadup files 
+
+loadups/exports.all
+library/RDSYS*
+loadups/lisp.sysout
+loadups/full.sysout
+# not currently included but might as well ignore it
+loadups/fuller.sysout
+loadups/*.dribble
+loadups/whereis.hash
+loadups/apps.sysout
+loadups/fuller.database
+
+# manual cross-reference files
+
+*.IMPTR
+
+#compiled code -- leave in for now
+
+# *.lcom
+# *.LCOM
+# *.dfasl
+# *.DFASL
+
+# older versions
+
+*~
+
+# emacs detritus
+*\#
+\.\#*
+
+# core files
+
+core
+
+# Mac OS detritus
+.DS_Store
+*.PS
+
+# nano detritus
+*.swp
+*.save
+

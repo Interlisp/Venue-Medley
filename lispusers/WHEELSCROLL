@@ -1,0 +1,232 @@
+(DEFINE-FILE-INFO PACKAGE "INTERLISP" READTABLE "INTERLISP" BASE 10)
+
+(FILECREATED " 2-Oct-2023 10:15:55" {WMEDLEY}<lispusers>WHEELSCROLL.;24 10480  
+
+      :EDIT-BY rmk
+
+      :CHANGES-TO (VARS WHEELSCROLLCOMS)
+                  (FNS ENABLEWHEELSCROLL)
+
+      :PREVIOUS-DATE " 6-Apr-2023 18:34:48" {WMEDLEY}<lispusers>WHEELSCROLL.;22)
+
+
+(PRETTYCOMPRINT WHEELSCROLLCOMS)
+
+(RPAQQ WHEELSCROLLCOMS
+       [(FNS ENABLEWHEELSCROLL WHEELSCROLL WHEELSCROLL.DOIT INSTALL-WHEELSCROLL 
+             LISPINTERRUPTS.WHEELSCROLL)
+        
+        (* ;; "These are the highest meta-ctrl characters, they will be unaffected by teh state of ctrl and meta mode keys")
+
+        (DECLARE%: EVAL@COMPILE DONTCOPY (CONSTANTS * WHEELSCROLLCHARS))
+        (GLOBALVARS WHEELSCROLLENABLED WHEELSCROLLDELTA WHEELSCROLLSETTLETIME \WHEELSCROLLINPROGRESS)
+        
+        (* ;; "To restore the keyactions for PAD..., if the keyaction table has been reinitialized")
+
+        [ADDVARS (AFTERSYSOUTFORMS (AND WHEELSCROLLENABLED (ENABLEWHEELSCROLL T)))
+               (AFTERMAKESYSFORMS (AND WHEELSCROLLENABLED (ENABLEWHEELSCROLL T]
+        (INITVARS (WHEELSCROLLENABLED NIL)
+               (WHEELSCROLLDELTA 20)
+               (HWHEELSCROLLDELTA NIL)
+               (WHEELSCROLLSETTLETIME 50)
+               (\WHEELSCROLLINPROGRESS NIL))
+        (DECLARE%: DONTEVAL@LOAD DOCOPY (P (INSTALL-WHEELSCROLL)
+                                           (ENABLEWHEELSCROLL T])
+(DEFINEQ
+
+(ENABLEWHEELSCROLL
+  [LAMBDA (ON EXCLUDEHORIZONTAL)                             (* ; "Edited  2-Oct-2023 10:05 by rmk")
+                                                           (* ; "Edited 23-Oct-2021 16:31 by larry")
+                                                            (* ; "Edited 11-Jun-2021 12:50 by rmk:")
+                                                            (* ; "Edited 28-May-2021 11:46 by rmk:")
+
+    (* ;; "So we can toggle this scrolling.")
+
+    (if ON
+        then (CL:UNLESS (EQP (GETD 'LISPINTERRUPTS)
+                             (GETD 'LISPINTERRUPTS.WHEELSCROLL))
+                 (CL:WHEN (GETD 'LISPINTERRUPTS.WHEELSCROLL) (* ; "In case of LOADFROM?")
+                     (MOVD? 'LISPINTERRUPTS 'LISPINTERRUPTS.WSORIG)
+                     (MOVD 'LISPINTERRUPTS.WHEELSCROLL 'LISPINTERRUPTS))) 
+
+             (* ;; "In some situations these other keyactions seem to be installed, hit them all.")
+
+             (for KAT in (LIST \CURRENTKEYACTION \COMMANDKEYACTION \DEFAULTKEYACTION)
+                do (for K in [if EXCLUDEHORIZONTAL
+                                 then `((PAD1 ,\WSUP)
+                                        (PAD2 ,\WSDOWN)
+                                        (PAD4 IGNORE)
+                                        (PAD5 IGNORE))
+                               else `((PAD1 ,\WSUP)
+                                      (PAD2 ,\WSDOWN)
+                                      (PAD4 ,\WSLEFT)
+                                      (PAD5 ,\WSRIGHT]
+                      do (KEYACTION (CAR K)
+                                (CONS (CL:IF (EQ (CADR K)
+                                                 'IGNORE)
+                                          'IGNORE
+                                          `(,(CADR K)
+                                            ,(CADR K)))
+                                      `IGNORE)
+                                KAT)))
+             (for I in WHEELSCROLLINTERRUPTS do (INTERRUPTCHAR (CAR I)
+                                                       (CADR I)
+                                                       (CADDR I)))
+             (SETQ WHEELSCROLLENABLED T)
+      else (CL:WHEN (EQP (GETD 'LISPINTERRUPTS.WHEELSCROLL)
+                         (GETD 'LISPINTERRUPTS))
+               (MOVD 'LISPINTERRUPTS.WSORIG 'LISPINTERRUPTS))
+           (for I in WHEELSCROLLINTERRUPTS do (INTERRUPTCHAR (CAR I)
+                                                     NIL))
+           (for KAT in (LIST \CURRENTKEYACTION \COMMANDKEYACTION \DEFAULTKEYACTION)
+              do (KEYACTION 'PAD1 '(IGNORE . IGNORE)
+                        KAT)
+                 (KEYACTION 'PAD2 '(IGNORE . IGNORE)
+                        KAT)
+                 (KEYACTION 'PAD4 '(IGNORE . IGNORE)
+                        KAT)
+                 (KEYACTION 'PAD5 '(IGNORE . IGNORE)
+                        KAT))
+           (SETQ WHEELSCROLLENABLED NIL])
+
+(WHEELSCROLL
+  [LAMBDA (DIRECTION DELTA)                                  (* ; 
+                                                           "Edited 21-Feb-2021 09:38 by rmk:")
+
+    (* ;; "The wheel may accidentally turn (giving the interrupt) when the users intention is simply to push the middle button.  And there may be another accidental turn (also giving an interrupt) when the user is releasing the middle button.  We don't yet have a good solution to this problem.  (This is not an issue with a trackpad)")
+
+    (* ;; "")
+
+    (CL:WHEN (MOUSESTATE UP)                                 (* ; 
+                                                           "Ignore interrupt if a button is down")
+        [LET ((W (WHICHW)))
+
+         (* Unsuccessful a ttempt to suppress scroll if middlebutton comes down within 
+       the setetle time (NOT (UNTILMOUSESTATE (ONLY MIDDLE) WHEELSCROLLSETTLETIME)))
+
+             (CL:WHEN W
+
+                 (* ;; "We scroll only if the window has a scrollfn.  Our behavior is thus different from a direct call to SCROLLW, which defaults to SCROLLBYREPAINTFN in that case, but conforms to what happens with IN/SCROLL/BAR? and SCROLL.HANDLER in WINDOWSCROLL.  Menus and scrollbars typically do not have scrollfns, so this suppresses otherwise funky behavior. ")
+
+                 (if (WINDOWPROP W 'SCROLLFN)
+                     then [PROCESS.EVAL (FIND.PROCESS 'MOUSE)
+                                     (CL:IF (EQ DIRECTION 'VERTICAL)
+                                         `(WHEELSCROLL.DOIT ,(KWOTE W)
+                                                 0
+                                                 ,DELTA)
+                                         `(WHEELSCROLL.DOIT ,(KWOTE W)
+                                                 ,DELTA 0))]
+                   elseif (EQ DIRECTION 'VERTICAL)
+                     then 
+
+                           (* ;; "We are in a pop-up scrollbar.  This moves the cursor there, the user has to click to scroll the main window.")
+
+                           (CL:WHEN (WINDOWPROP W 'VERTICALSCROLLBARFOR)
+                               (\CURSORPOSITION LASTMOUSEX (IPLUS LASTMOUSEY DELTA))
+                               (GETMOUSESTATE))
+                   elseif (EQ DIRECTION 'HORIZONTAL)
+                     then (CL:WHEN (WINDOWPROP W 'HORIZONTALSCROLLBARFOR)
+                                  (\CURSORPOSITION (IPLUS DELTA LASTMOUSEX)
+                                         LASTMOUSEY)
+                                  (GETMOUSESTATE))))])])
+
+(WHEELSCROLL.DOIT
+  [LAMBDA (WINDOW DX DY)                                (* ; "Edited 20-Feb-2021 17:34 by rmk:")
+
+    (* ;; "This does the actual wheel scrolling, runing in the mouse process.")
+
+    (* ;; "There have been instances where the window gets garbled as the wheel moves.  The hypothesis is that this is because the wheel moves so fast that another scroll starts before a previous one completes.")
+
+    (* ;; "The global variable \WHEELSCROLLINPROGRESS is set to prevent that interference.")
+
+    (CL:UNLESS \WHEELSCROLLINPROGRESS
+        (RESETVAR \WHEELSCROLLINPROGRESS T (SCROLLW WINDOW DX DY)))])
+
+(INSTALL-WHEELSCROLL
+  [LAMBDA NIL                                               (* ; "Edited 29-Nov-2021 21:56 by rmk:")
+                                                            (* ; "Edited 28-May-2021 11:46 by rmk:")
+                                                            (* ; "Edited 17-Feb-2021 11:53 by rmk:")
+
+    (* ;; "We want the UP, DOWN...constants to be compiled awsy")
+
+    (SETQ WHEELSCROLLINTERRUPTS `((,\WSUP (WHEELSCROLL 'VERTICAL WHEELSCROLLDELTA)
+                                         T)
+                                  (,\WSDOWN (WHEELSCROLL 'VERTICAL (IMINUS WHEELSCROLLDELTA))
+                                         T)
+                                  (,\WSLEFT (WHEELSCROLL 'HORIZONTAL (IMINUS (OR HWHEELSCROLLDELTA 
+                                                                                 WHEELSCROLLDELTA))
+                                                   T))
+                                  (,\WSRIGHT (WHEELSCROLL 'HORIZONTAL (OR HWHEELSCROLLDELTA 
+                                                                          WHEELSCROLLDELTA)
+                                                    WHEELSCROLLDELTA T])
+
+(LISPINTERRUPTS.WHEELSCROLL
+  [LAMBDA NIL                                           (* ; "Edited 17-Feb-2021 11:09 by rmk:")
+
+    (* ;; "So wheelscroll interrupts will be installed in every process")
+
+    (APPEND WHEELSCROLLINTERRUPTS (LISPINTERRUPTS.WSORIG])
+)
+
+
+
+(* ;; 
+"These are the highest meta-ctrl characters, they will be unaffected by teh state of ctrl and meta mode keys"
+)
+
+(DECLARE%: EVAL@COMPILE DONTCOPY 
+
+(RPAQQ WHEELSCROLLCHARS ((\WSUP 156)
+                         (\WSDOWN 157)
+                         (\WSLEFT 158)
+                         (\WSRIGHT 159)))
+(DECLARE%: EVAL@COMPILE 
+
+(RPAQQ \WSUP 156)
+
+(RPAQQ \WSDOWN 157)
+
+(RPAQQ \WSLEFT 158)
+
+(RPAQQ \WSRIGHT 159)
+
+
+(CONSTANTS (\WSUP 156)
+       (\WSDOWN 157)
+       (\WSLEFT 158)
+       (\WSRIGHT 159))
+)
+)
+(DECLARE%: DOEVAL@COMPILE DONTCOPY
+
+(GLOBALVARS WHEELSCROLLENABLED WHEELSCROLLDELTA WHEELSCROLLSETTLETIME \WHEELSCROLLINPROGRESS)
+)
+
+
+
+(* ;; "To restore the keyactions for PAD..., if the keyaction table has been reinitialized")
+
+
+(ADDTOVAR AFTERSYSOUTFORMS (AND WHEELSCROLLENABLED (ENABLEWHEELSCROLL T)))
+
+(ADDTOVAR AFTERMAKESYSFORMS (AND WHEELSCROLLENABLED (ENABLEWHEELSCROLL T)))
+
+(RPAQ? WHEELSCROLLENABLED NIL)
+
+(RPAQ? WHEELSCROLLDELTA 20)
+
+(RPAQ? HWHEELSCROLLDELTA NIL)
+
+(RPAQ? WHEELSCROLLSETTLETIME 50)
+
+(RPAQ? \WHEELSCROLLINPROGRESS NIL)
+(DECLARE%: DONTEVAL@LOAD DOCOPY 
+
+(INSTALL-WHEELSCROLL)
+
+(ENABLEWHEELSCROLL T)
+)
+(DECLARE%: DONTCOPY
+  (FILEMAP (NIL (1459 9251 (ENABLEWHEELSCROLL 1469 . 4512) (WHEELSCROLL 4514 . 7115) (WHEELSCROLL.DOIT 
+7117 . 7753) (INSTALL-WHEELSCROLL 7755 . 8972) (LISPINTERRUPTS.WHEELSCROLL 8974 . 9249)))))
+STOP

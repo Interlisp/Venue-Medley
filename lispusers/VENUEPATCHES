@@ -1,0 +1,50 @@
+(DEFINE-FILE-INFO PACKAGE "INTERLISP" READTABLE "INTERLISP" BASE 10)
+
+(FILECREATED "26-Sep-2024 12:31:19" 
+{DSK}<Users>kaplan>Local>medley3.5>venue-medley>lispusers>VENUEPATCHES.;5 1907   
+
+      :EDIT-BY rmk
+
+      :CHANGES-TO (VARS VENUEPATCHESCOMS)
+
+      :PREVIOUS-DATE "26-Sep-2024 11:48:04" 
+{DSK}<Users>kaplan>Local>medley3.5>venue-medley>lispusers>VENUEPATCHES.;1)
+
+
+(PRETTYCOMPRINT VENUEPATCHESCOMS)
+
+(RPAQQ VENUEPATCHESCOMS ((FILES (SYSLOAD)
+                                WHEELSCROLL MODERNIZE UNIXYCD)
+                         (DECLARE%: DONTEVAL@LOAD DOEVAL@COMPILE DONTCOPY (FILES (LOADCOMP)
+                                                                                 FILEBROWSER))
+                         (FNS FB.GETWINDOW)))
+
+(FILESLOAD (SYSLOAD)
+       WHEELSCROLL MODERNIZE UNIXYCD)
+(DECLARE%: DONTEVAL@LOAD DOEVAL@COMPILE DONTCOPY 
+
+(FILESLOAD (LOADCOMP)
+       FILEBROWSER)
+)
+(DEFINEQ
+
+(FB.GETWINDOW
+  [LAMBDA (WINDOW WHICH)                                    (* ; "Edited 16-Oct-2021 15:02 by rmk:")
+
+    (* ;; "Closed function to get at filebrowser attached windows by type, without need record declarations at runtime. Helps MODERNIZE get the right regions.")
+
+    (LET* [(FBWINDOW (CENTRALWINDOW WINDOW))
+           (FILEBROWSER (WINDOWPROP FBWINDOW 'FILEBROWSER]
+          (CL:WHEN FILEBROWSER
+              (SELECTQ WHICH
+                  (HEADING (FETCH (FILEBROWSER HEADINGWINDOW) OF FILEBROWSER))
+                  (COUNTER (FETCH (FILEBROWSER COUNTERWINDOW) OF FILEBROWSER))
+                  (BROWSER FBWINDOW)
+                  (PROMPT (FETCH (FILEBROWSER PROMPTWINDOW) OF FILEBROWSER))
+                  (COMMAND [FIND W IN (WINDOWPROP FBWINDOW 'ATTACHEDWINDOWS)
+                              SUCHTHAT (EQ 'MENUBUTTONFN (WINDOWPROP W 'BUTTONEVENTFN])
+                  NIL))])
+)
+(DECLARE%: DONTCOPY
+  (FILEMAP (NIL (916 1884 (FB.GETWINDOW 926 . 1882)))))
+STOP
